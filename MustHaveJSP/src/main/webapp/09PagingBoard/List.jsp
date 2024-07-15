@@ -1,3 +1,4 @@
+<%@page import="utils.BoardPage"%>
 <%@page import="java.util.HashMap"%>
 <%@page import="java.util.Map"%>
 <%@page import="model1.board.BoardDTO"%>
@@ -6,7 +7,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8"
     pageEncoding="UTF-8"%>
 <%
-BoardDAO dao = new BoardDAO(application);
+BoardDAO dao = new BoardDAO(application); 
 
 Map<String, Object> param = new HashMap<String, Object>();
 String searchField = request.getParameter("searchField");
@@ -16,9 +17,26 @@ if(searchWord != null){
 	param.put("searchWord", searchWord);
 }
 
-int totalCount = dao.selectCount(param);
-List<BoardDTO> boardLists = dao.selectList(param);
-dao.close();
+int totalCount = dao.selectCount(param); 
+// 페이지 처리 strat
+int pageSize = Integer.parseInt(application.getInitParameter("POSTS_PER_PAGE"));
+int blockPage = Integer.parseInt(application.getInitParameter("PAGES_PER_BLOCK"));
+int totalPage = (int)Math.ceil((double)totalCount / pageSize);
+
+int pageNum = 1;
+String pageTemp = request.getParameter("pageNum");
+if(pageTemp != null && !pageTemp.equals(""))
+	pageNum = Integer.parseInt(pageTemp); 
+
+int start = (pageNum - 1) * pageSize + 1;
+int end = pageNum * pageSize;
+param.put("start", start);
+param.put("end", end);
+// 페이지 처리 end
+
+List<BoardDTO> boardLists = dao.selectListPage(param); // 게시물 목록 받기
+dao.close(); // DB 연결 닫기
+
 
 %>
 <!DOCTYPE html>
@@ -30,7 +48,7 @@ dao.close();
 	<body>
 		 <jsp:include page="../Common/Link.jsp" />  
 
-	    <h2>목록 보기(List)</h2>
+	    <h2>목록 보기(List) - 현재 페이지 : <%= pageNum %> (전체 : <%=totalPage %>)</h2>
 	    <form method="get">  
 	    <table border="1" width="90%">
 	    <tr>
@@ -65,10 +83,12 @@ dao.close();
 	<%
 	}
 	else {
-	    int virtualNum = 0; 
+	    int virtualNum = 0;
+	    int countNum = 0;
 	    for (BoardDTO dto : boardLists)
 	    {
-	        virtualNum = totalCount--;   // 출력번호 
+	        //virtualNum = totalCount--;   // 출력번호 
+	        virtualNum = totalCount - (((pageNum - 1) * pageSize) + countNum++);
 	%>
 	        <tr align="center">
 	            <td><%= virtualNum %></td>  
@@ -86,12 +106,14 @@ dao.close();
 	    </table>
 	   
 	    <table border="1" width="90%">
-	        <tr align="right">
+	        <tr align="center">
+	        	<td>
+	        		<%= BoardPage.pagingStr(totalCount, pageSize, blockPage, pageNum, 
+	        				request.getRequestURI()) %>
+	        	</td>
 	            <td><button type="button" onclick="location.href='Write.jsp';">글쓰기
 	                </button></td>
 	        </tr>
-	    </table>
-			
-	
+	    </table>	
 	</body>
 </html>
